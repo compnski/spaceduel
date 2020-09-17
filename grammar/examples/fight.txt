@@ -1,0 +1,3 @@
+drop a mine at 15km
+set front shield to full power
+orbit at 20km
