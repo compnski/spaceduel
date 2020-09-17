@@ -7,16 +7,20 @@
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
     "@types/jest": "^24.9.1",
+    "@types/mainloop.js": "^1.0.5",
     "@types/matter-js": "^0.14.5",
     "@types/mousetrap": "^1.6.3",
     "@types/node": "^12.12.54",
     "@types/react": "^16.9.48",
     "@types/react-dom": "^16.9.8",
+    "antlr4ts": "^0.5.0-alpha.3",
     "arwes": "^1.0.0-alpha.5",
     "gauge": "^3.0.0",
+    "mainloop.js": "^1.0.4",
     "matter-attractors": "^0.1.6",
     "matter-js": "^0.14.2",
     "matter-wrap": "^0.2.0",
+    "monaco-editor-core": "^0.20.0",
     "mousetrap": "^1.6.5",
     "poly-decomp": "^0.3.0",
     "react": "^16.13.1",
@@ -25,10 +29,11 @@
     "typescript": "^3.7.5"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
+    "eject": "react-scripts eject",
+    "antlr4ts": "antlr4ts -visitor grammar/spaceduel.g4"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -44,5 +49,13 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "antlr4ts-cli": "^0.5.0-alpha.3",
+    "css-loader": "^4.3.0",
+    "monaco-editor-webpack-plugin": "^1.9.0",
+    "react-app-rewired": "^2.1.6",
+    "react-monaco-editor": "^0.40.0",
+    "style-loader": "^1.2.1"
   }
 }

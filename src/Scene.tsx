@@ -4,8 +4,11 @@ import Matter from "matter-js";
 import MatterAttractors from "matter-attractors";
 import Mousetrap from "mousetrap";
 import decomp from "poly-decomp";
+import MainLoop from "mainloop.js"
+
 
 declare const window: any;
+
 
 window.decomp = decomp;
 
@@ -15,196 +18,329 @@ window.decomp = decomp;
 var heading = 0;
 const thrusterForce = 0.001;
 const angularVelocityDelta = 0.01;
-const shipVertices = [{'x':0, 'y':10}, {'x':20, 'y':20}, {'x':20, 'y':0}];
+const shipVertices = [{ 'x': 0, 'y':2  }, { 'x': 5, 'y': 4 }, { 'x': 5, 'y': 0 }];
+
+const jumpForce = 0.01;
+const starMass = 20000;
+const bulletGunForce = 0.001;
+const cloudGunForce = 0.000005;
+const shipMass = 1;
+const bulletMass = 0.5;
+const cloudMass = 0.001;
+const cloudRadius = 10;
+const starRadius = 1;
+const startingXPos = 500;
+const Gravity = MatterAttractors.Attractors.gravityConstant;
+const PhysicsFrameTime = 16.6666667
+
+
+function forceFromAngle(angle:number, magnitude:number):Matter.Vector {
+    return Matter.Vector.rotate(Matter.Vector.create(magnitude, 0), Math.PI + angle);
+}
+
 
 class Scene extends React.Component {
-    constructor(props:any) {
-	super(props);
-	this.state = {};
+    constructor(props: any) {
+        super(props);
+        this.state = {};
     }
 
     componentDidMount() {
-	Matter.use(
-	    'matter-wrap', // not required, just for demo
-	    'matter-attractors', // PLUGIN_NAME
-	    'matter-collision-events'
-	);
+        Matter.use(
+            'matter-wrap', // not required, just for demo
+            'matter-attractors', // PLUGIN_NAME
+            'matter-collision-events'
+        );
 
-	var Engine = Matter.Engine,
-	    Render = Matter.Render,
-	    Runner = Matter.Runner,
-	    Body = Matter.Body,
-	    //Common = Matter.Common,
-	    //MouseConstraint = Matter.MouseConstraint,
-	    //Mouse = Matter.Mouse,
-	    World = Matter.World,
-	    Bodies = Matter.Bodies;
+        var Engine = Matter.Engine,
+            Render = Matter.Render,
+            Runner = Matter.Runner,
+            Body = Matter.Body,
+            //Common = Matter.Common,
+            //MouseConstraint = Matter.MouseConstraint,
+            //Mouse = Matter.Mouse,
+            World = Matter.World,
+            Vector = Matter.Vector,
+            Bodies = Matter.Bodies;
 
-	// create engine
-	var engine = Engine.create(),
-	    world = engine.world;
+        // create engine
+        var engine = Engine.create(),
+            world = engine.world;
+        
 
-	// create renderer
-	var render = Render.create({
-	    element: document.body,
-	    engine: engine,
-	    options: {
-		width: Math.min(document.documentElement.clientWidth, 1024),
-		height: Math.min(document.documentElement.clientHeight, 1024),
-		wireframes: false,
-	    }
-	});
-
-	Render.run(render);
-
-	// create runner
-	var runner = Runner.create();
-	Runner.run(runner, engine);
-
-	// add bodies
-	world.bodies = [];
-	world.gravity.scale = 0;
-
-	//engine.timing.timeScale = 1.5;
-
-	var radius = 5;
-
-		function spawnBody(x:number, y:number, vertices:any, mass:number, fillColor:string) {
-	    return Bodies.fromVertices(
-		x, y,
-		vertices,
-		{
-		    render: {
-			fillStyle: fillColor,
-		    },
-		    mass: mass,
-		    frictionAir: 0,
-		    plugin: {
-			attractors: [
-			    // there is a built in helper function for Newtonian gravity!
-			    // you can find out how it works in index.js
-			    MatterAttractors.Attractors.gravity
-			],
-		    }
-		}
-	    );
-	}
-	var body = spawnBody(450, 300, shipVertices, 1, 'red');
-	Body.setAngle(body, Math.PI/2);
-	Body.setVelocity(body, {x:5, y:0});
-	World.add(world, body);
-
-	
-	var blueBody = spawnBody(250, 400, shipVertices, 1, 'blue');
-	Body.setAngle(blueBody, Math.PI/2);
-	Body.setVelocity(blueBody, {x:0, y:-5});
-	World.add(world, blueBody);
-
-	
-	var star = Bodies.circle(500,500,20, { mass: 20000, frictionAir:0.5, plugin: {
-	    attractors: [
-		MatterAttractors.Attractors.gravity
-
-	    ]}});
-	World.add(world, star);
-
-	Mousetrap.bind("left", function() {
-	    //Body.rotate(body, -0.1)
-	    //Body.setAngle(body, body.angle % (2*Math.PI))
-	    Body.setAngularVelocity(body, body.angularVelocity - angularVelocityDelta);
-	    //console.log(body.angle);
-	})
-	Mousetrap.bind("right", function() {
-	    Body.setAngularVelocity(body, body.angularVelocity + angularVelocityDelta);
-	})
-
-	
-	Mousetrap.bind("up", function() {
-	    var force = -thrusterForce;
-	    Body.applyForce(body, body.position, {
-		x: Math.cos(body.angle) * force,
-		y: Math.sin(body.angle) * force
-	    });
-	});
-
-	Mousetrap.bind("down", function() {
-	    var force = thrusterForce;
-	    Body.applyForce(body, body.position, {
-		x: Math.cos(body.angle) * force,
-		y: Math.sin(body.angle) * force
-	    });
-	});
+        // create renderer
+        var render = Render.create({
+            element: this.refs.scene as any, 
+            engine: engine,
+            options: {
+                width: Math.min(document.documentElement.clientWidth, 1024),
+                height: Math.min(document.documentElement.clientHeight, 1024),
+                wireframes: false,
+            }
+        });
 
 
-	Mousetrap.bind(["backspace", "space"], function() {
-	    console.log("Fire!");
-	    
+        Render.run(render);
 
-	});
+        // create runner
+        //var runner = Runner.create();
+        //Runner.run(runner, engine);
 
-	Matter.Events.on(engine, 'collisionStart', function(event) {
-	    console.log(event.pairs.slice());
-	    let a = event.pairs[0].bodyA;
-	    let b = event.pairs[0].bodyB;
-	    console.log([a,b]);
-	    if (a != null && b != null) {
-		a.render.fillStyle = 'green';
-		b.render.fillStyle = 'green';
-	    }
-	    // check bodies, do whatever...
-	});
-		var lastDotAt = 0;
-		Matter.Events.on(runner, "tick", function(event){
-			if (event.timestamp > lastDotAt + 100) {
-				console.log(event.timestamp);
-				lastDotAt = event.timestamp;
-				var dot = Bodies.circle(body.position.x, body.position.y, 2, {
-					collisionFilter: { mask: 0 },
-					isSensor: true,
-					mass: 0,
-					isStatic: true,
-					render: { fillStyle: 'red' },
-				})
-				dot.mass = 0;
-				console.log(dot)
-				World.add(world, dot)
-				window.setTimeout(function() {
-					World.remove(world, dot)
-				}, 1000)
-			}
-			/*
-			//{timestamp: 67249.99999999668, name: "tick", source: {…}}
-			//name: "tick"
-			//source:
-		//correction: 1
-		//counterTimestamp: 40036.375
-		//delta: 16.666666666666668
-		//deltaHistory: (60) [6.940000000002328, 6.9539999999979045, 6.9539999999979045, 6.949000000000524, 6.955000000001746, 6.944000000003143, 6.958999999995285, 6.980000000003201, 6.927999999999884, 6.936999999998079, 6.957000000002154, 6.966999999996915, 6.930000000000291, 6.946000000003551, 6.951999999997497, 6.974000000001979, 6.924999999995634, 6.974000000001979, 6.936999999998079, 6.93300000000454, 6.949000000000524, 6.951999999997497, 6.968000000000757, 6.947999999996682, 6.947000000000116, 6.938999999998487, 6.953000000001339, 6.944000000003143, 6.955999999998312, 6.947000000000116, 6.968000000000757, 6.953000000001339, 6.957999999998719, 6.936000000001513, 6.977999999995518, 6.927000000003318, 6.94999999999709, 6.961000000002969, 6.934999999997672, 6.944999999999709, 6.961000000002969, 6.949000000000524, 6.97099999999773, 6.931000000004133, 6.940999999998894, 6.955999999998312, 6.945999999996275, 6.950000000004366, 6.955999999998312, 6.953000000001339, 6.94999999999709, 6.942000000002736, 6.977999999995518, 6.935000000004948, 6.953000000001339, 6.945999999996275, 6.944000000003143, 6.958999999995285, 6.942000000002736, 6.945999999996275]
-		//deltaMax: 33.333333333333336
-		//deltaMin: 16.666666666666668
-		//deltaSampleSize: 60
-		//enabled: true
-		//events: {tick: Array(1)}
-		//fps: 144.1245599999997
-		//frameCounter: 60
-		//frameRequestId: 11590
-		//isFixed: false
-		//timePrev: 40453.393
-		//timeScalePrev: 1
-		//__proto__: Object
-		//timestamp: 67249.99999999668
-		//__proto__: Object
-		//console.log(event);
-*/
-	});
+        
+        // add bodies
+        world.bodies = [];
+        world.gravity.scale = 0;
+
+        //engine.timing.timeScale = 1.5;
+
+        var radius = 5;
 
 
+        var star = Bodies.circle(startingXPos, 500, starRadius, {
+            mass: starMass,
+            frictionAir: 0,///0.5,
+            plugin: {
+                attractors: [
+                    MatterAttractors.Attractors.gravity
+
+                ]
+            }
+        });
+        World.add(world, star);
+
+        
+        function spawnBody(x: number, y: number, vertices: any, mass: number, fillColor: string) {
+            const body = Bodies.fromVertices(
+                x, y,
+                vertices,
+                {
+                    render: {
+                        fillStyle: fillColor,
+                    },
+                    timeScale: 1,
+                    mass: mass,
+                    frictionAir: 0,//0.000001,
+                }
+            );
+            World.add(world, body);
+            const rotationalRadius = Math.abs(y-500);
+            console.log("r=", rotationalRadius)
+            const v = Math.sqrt((MatterAttractors.Attractors.gravityConstant * starMass) / rotationalRadius)*10;
+            //const f = (forceFromAngle(Math.PI, -v));
+
+            // v = X*cos(45) + Y*sin(45)
+            const bodyA = star,
+                  bodyB = body;
+
+            var bToA = Matter.Vector.sub(bodyB.position, bodyA.position),
+                distanceSq = Matter.Vector.magnitudeSquared(bToA) || 0.0001,
+                normal = Matter.Vector.normalise(bToA),
+                tangent = Matter.Vector.rotate(normal, Math.PI/2),
+                magnitude = Math.sqrt((MatterAttractors.Attractors.gravityConstant * starMass) / rotationalRadius),//*17,//-MatterAttractors.Attractors.gravityConstant * (bodyA.mass * bodyB.mass / distanceSq),
+                force = Matter.Vector.mult(tangent, magnitude*PhysicsFrameTime);
+
+            //const f = Matter.Vector.rotate(Matter.Vector.mult(normal,4),Math.PI/2);
+            const tau = Math.PI/2
+            const e = 0
+            const vX = -v * Math.sin(tau) / (1 - e * Math.cos(tau))
+            const vY = v * Math.sqrt(1 - e*e) * Math.cos(tau) / (1-e*Math.cos(tau))
+            const f ={"x":vX, "y":vY}
+            //f["y"]=0;
+            console.log("v=",v)
+            console.log("f=",f)
+                
+            console.log("mag=", magnitude, "force=",force)
+
+            
+            Body.setVelocity(body, force)
+           //Body.applyForce(body, normal, f)
+            return body;
+        }
+        var body = spawnBody(startingXPos, 150, shipVertices, shipMass, 'red');
+        
 
 
-	}
+        var blueBody = spawnBody(startingXPos, 850, shipVertices, shipMass, 'blue');
+        //World.add(world, blueBody);
+
+
+        const fireBullet = function(shooter: Matter.Body) {
+            const shipCenter = Matter.Vertices.centre(shooter.vertices)
+            const gunCenter = Vector.add(shipCenter,
+                Vector.rotate(Vector.create(-15, 0), shooter.angle))
+
+
+            var bullet = Bodies.circle(gunCenter.x, gunCenter.y, 2, {
+                mass: bulletMass,
+                isSensor: true,
+                frictionAir: 0.0001,
+                render: { fillStyle: 'white' }
+            });
+            Body.setVelocity(bullet, shooter.velocity);
+
+            Body.applyForce(bullet, shooter.position, forceFromAngle(shooter.angle, bulletGunForce));
+            World.add(world, bullet);
+
+        };
+
+        const fireCloud = function(shooter: Matter.Body) {
+            const shipCenter = Matter.Vertices.centre(shooter.vertices)
+            const gunCenter = Vector.add(shipCenter,
+                Vector.rotate(Vector.create(15, 0), shooter.angle))
+
+
+            var bullet = Bodies.circle(gunCenter.x, gunCenter.y, 4, {
+                mass: cloudMass,
+                isSensor: true,
+                frictionAir: 0.00001,
+                render: { fillStyle: 'white' }
+            });
+            console.log(bullet.mass)
+            Body.setVelocity(bullet, shooter.velocity);
+
+
+            const bulletForce = forceFromAngle(shooter.angle, -cloudGunForce)
+            Body.applyForce(bullet, shooter.position, bulletForce);
+            World.add(world, bullet);
+            window.setTimeout(function(){
+                Body.scale(bullet, 2, 2)
+                console.log(bullet.mass)}, 300)
+            window.setTimeout(function(){
+                Body.scale(bullet, 2, 2)
+                console.log(bullet.mass)}, 600)
+
+        };
+
+
+        const crashIntoStar = function(body: Matter.Body) {
+            World.remove(world, body);
+        }
+        const onCollide = function(event: Matter.IEventCollision<Matter.Engine>) {
+            event.pairs.forEach(function(pair) {
+                const { bodyA, bodyB } = pair;
+                if (bodyA == star) {
+                    crashIntoStar(bodyB);
+
+                } else if (bodyB == star) {
+                    crashIntoStar(bodyA);
+                } else {
+                console.log([bodyA, bodyB])
+                if (bodyA != null && bodyB != null) {
+                    bodyA.render.fillStyle = 'green';
+                    bodyB.render.fillStyle = 'green';
+                }
+                    }
+            });
+        };
+
+        const addDotFor = function(body: Matter.Body, color: string) {
+            var dot = Bodies.circle(body.position.x, body.position.y, 2, {
+                collisionFilter: { mask: 0 },
+                isSensor: true,
+                mass: 0,
+                isStatic: true,
+                render: { fillStyle: color },
+            })
+            var vel = body.velocity
+            vel = Vector.mult(vel, 5)
+            
+            const yVel = Bodies.rectangle(body.position.x, body.position.y+vel.y/2, 1, vel.y, {collisionFilter: { mask: 0 }, isStatic: true, isSensor: true, mass:0, render: {fillStyle: color}})
+            yVel.mass = 0
+            const xVel = Bodies.rectangle(body.position.x+vel.x/2, body.position.y, vel.x, 1, {collisionFilter: { mask: 0 }, isStatic: true, isSensor: true, mass:0, render: {fillStyle: color}})
+            xVel.mass = 0
+            
+            //Matter.Body.setParts(dot, [dot, yVel])
+            dot.mass = 0;
+            //console.log(dot)            
+            World.add(world, dot)
+            World.add(world, yVel)
+            World.add(world, xVel)
+            window.setTimeout(function() {
+                World.remove(world, dot)
+                World.remove(world, xVel)
+                World.remove(world, yVel)
+            },3250)
+            // TODO: Fade dot color over time.
+            // TODO: Pull into trail manager class
+        }
+
+
+        const angleBodyToMatchVelocity = function(body:Matter.Body) {
+            Body.setAngle(body, Math.PI + Vector.angle(Vector.create(0,1), body.velocity));
+        }
+
+        var lastDotAt = 0;
+        const tick = function(delta:number, timestamp:number) {
+
+            if (timestamp > lastDotAt + 100){
+                //console.log(event)
+                //console.log(event.timestamp);
+                lastDotAt = timestamp;
+                addDotFor(body, 'red');
+                addDotFor(blueBody, 'blue');
+                //console.log(body.velocity)
+
+                const force = thrusterForce * (0.5 - Math.random())
+                //Body.applyForce(blueBody, blueBody.position, forceFromAngle(blueBody.angle, force))
+            }
+            if(body.angularVelocity == 0) {
+                angleBodyToMatchVelocity(body)
+            }
+            angleBodyToMatchVelocity(blueBody)
+        };
+
+
+        // Mousetrap.bind("left", function() {
+        //     Body.setAngularVelocity(body, body.angularVelocity - angularVelocityDelta);
+        // })
+        //
+        // Mousetrap.bind("right", function() {
+        //     Body.setAngularVelocity(body, body.angularVelocity + angularVelocityDelta);
+        // })
+
+        Mousetrap.bind("backspace", function() {
+            console.log(body.velocity)
+            //Body.applyForce(body, body.position, forceFromAngle(Math.PI/2 + body.angle, jumpForce))
+        });
+        Mousetrap.bind("up", function() {
+            Body.applyForce(body, body.position, forceFromAngle(body.angle, thrusterForce))
+        });
+
+        Mousetrap.bind("down", function() {
+            Body.applyForce(body, body.position, forceFromAngle(body.angle, -thrusterForce))
+        });
+
+
+        Mousetrap.bind("e", function() {
+            Body.applyForce(blueBody, blueBody.position, forceFromAngle(blueBody.angle, thrusterForce))
+        });
+
+        Mousetrap.bind("d", function() {
+            Body.applyForce(blueBody, blueBody.position, forceFromAngle(blueBody.angle, -thrusterForce))
+        });
+
+
+
+        //Matter.Events.on(runner, "tick", tick);
+        Mousetrap.bind(["1"], () => fireBullet(body))
+        Mousetrap.bind(["2"], () => fireCloud(body))
+
+        Matter.Events.on(engine, 'collisionStart', onCollide)
+
+
+        
+        const doUpdate = function doUpdate(delta:number){
+            Engine.update(engine, delta)
+            tick(delta, engine.timing.timestamp);
+            
+        }
+        
+        MainLoop.setUpdate(doUpdate).start()
+
+    }
 
     render() {
-	return <div ref="scene" />;
+        return <div ref="scene" />;
     }
 }
 export default Scene;

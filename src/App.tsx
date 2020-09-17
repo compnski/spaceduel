@@ -3,7 +3,8 @@ import logo from './logo.svg';
 import './App.css';
 import Scene from './Scene'
 import { ThemeProvider, createTheme, Arwes, Puffs } from "arwes";
-
+//import Chatbox from './Chatbox'
+//import { languageID } from './lang/config'
 
 function App() {
     return (
@@ -12,12 +13,12 @@ function App() {
                 <h1>SpaceDuel</h1>
                 <Puffs style={{ width: '100%', height: 1024 }}>
                     <Scene />
-                </Puffs>                
+                </Puffs>
+                <!-->                <Chatbox language={languageID}/> -->
             </Arwes>
         </ThemeProvider>
     );
 }
-
 
 
 
